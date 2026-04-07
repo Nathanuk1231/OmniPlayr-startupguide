@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OmniPlayr — Play Everything From One Place</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080a0f;
+      --surface: #0e1118;
+      --border: rgba(255,255,255,0.07);
+      --accent: #00e5a0;
+      --accent2: #7c6fff;
+      --text: #e8eaf0;
+      --muted: #5a6175;
+      --planned: #2a2d3a;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 15px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── noise overlay ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.6;
+    }
+
+    /* ── gradient orbs ── */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .orb-1 { width: 600px; height: 600px; background: rgba(0,229,160,0.08); top: -200px; left: -200px; }
+    .orb-2 { width: 500px; height: 500px; background: rgba(124,111,255,0.09); bottom: 10%; right: -150px; }
+    .orb-3 { width: 300px; height: 300px; background: rgba(0,229,160,0.05); top: 50%; left: 40%; }
+
+    /* ── nav ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(8,10,15,0.7);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .nav-logo .dot {
+      width: 8px; height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      letter-spacing: 0.05em;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+      background: var(--accent) !important;
+      color: var(--bg) !important;
+      padding: 8px 18px !important;
+      border-radius: 4px !important;
+      font-weight: 400 !important;
+      transition: opacity 0.2s !important;
+    }
+    .nav-cta:hover { opacity: 0.85 !important; }
+
+    /* ── hero ── */
+    .hero {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 120px 40px 80px;
+      max-width: 900px;
+    }
+
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      border: 1px solid rgba(0,229,160,0.25);
+      border-radius: 2px;
+      padding: 5px 12px;
+      margin-bottom: 36px;
+      width: fit-content;
+      opacity: 0;
+      animation: fadeUp 0.6s 0.1s forwards;
+    }
+
+    .hero-tag::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(52px, 8vw, 88px);
+      line-height: 1.0;
+      letter-spacing: -3px;
+      margin-bottom: 28px;
+      opacity: 0;
+      animation: fadeUp 0.6s 0.2s forwards;
+    }
+
+    .hero h1 .accent { color: var(--accent); }
+    .hero h1 .accent2 { color: var(--accent2); }
+
+    .hero-desc {
+      font-size: 17px;
+      color: var(--muted);
+      max-width: 540px;
+      line-height: 1.7;
+      margin-bottom: 48px;
+      opacity: 0;
+      animation: fadeUp 0.6s 0.35s forwards;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      opacity: 0;
+      animation: fadeUp 0.6s 0.5s forwards;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 24px;
+      border-radius: 4px;
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      text-decoration: none;
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+    }
+    .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.04); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── wip badge ── */
+    .wip-banner {
+      position: relative;
+      z-index: 1;
+      margin: 0 40px;
+      padding: 16px 24px;
+      background: rgba(124,111,255,0.08);
+      border: 1px solid rgba(124,111,255,0.2);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--accent2);
+      opacity: 0;
+      animation: fadeUp 0.6s 0.65s forwards;
+    }
+    .wip-banner span { color: var(--muted); }
+
+    /* ── section base ── */
+    section {
+      position: relative;
+      z-index: 1;
+      padding: 100px 40px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: clamp(28px, 4vw, 42px);
+      letter-spacing: -1.5px;
+      margin-bottom: 16px;
+    }
+
+    .section-sub {
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 500px;
+      margin-bottom: 56px;
+      line-height: 1.7;
+    }
+
+    /* ── features grid ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      padding: 32px;
+      transition: background 0.2s;
+    }
+    .feature-card:hover { background: #131620; }
+
+    .feature-icon {
+      font-size: 24px;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .feature-name {
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: 17px;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .feature-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── plugin table ── */
+    .plugin-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .plugin-table th {
+      text-align: left;
+      padding: 14px 24px;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      text-transform: uppercase;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .plugin-table td {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    .plugin-table tr:last-child td { border-bottom: none; }
+    .plugin-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .plugin-name {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(90,97,117,0.2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    /* ── quickstart ── */
+    .quickstart-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .code-dots { display: flex; gap: 6px; }
+    .code-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .code-dot:nth-child(1) { background: #ff5f57; }
+    .code-dot:nth-child(2) { background: #febc2e; }
+    .code-dot:nth-child(3) { background: #28c840; }
+
+    .code-filename { font-size: 12px; color: var(--muted); }
+
+    pre {
+      padding: 28px;
+      overflow-x: auto;
+      font-family: 'DM Mono', monospace;
+      font-size: 13.5px;
+      line-height: 2;
+    }
+
+    .cmd-prefix { color: var(--accent); user-select: none; }
+    .cmd-text   { color: #c8d0e0; }
+    .cmd-comment { color: var(--muted); font-style: italic; }
+
+    /* ── structure ── */
+    .file-tree {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 28px;
+      font-size: 14px;
+      line-height: 2;
+    }
+
+    .tree-dir { color: var(--accent2); }
+    .tree-file { color: var(--muted); }
+    .tree-note { color: rgba(90,97,117,0.7); font-style: italic; font-size: 12px; }
+
+    /* ── footer ── */
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 48px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+
+    .footer-logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+      color: var(--muted);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 28px;
+      list-style: none;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--text); }
+
+    .footer-copy {
+      font-size: 12px;
+      color: rgba(90,97,117,0.6);
+      width: 100%;
+    }
+
+    /* ── divider ── */
+    .divider {
+      position: relative;
+      z-index: 1;
+      height: 1px;
+      background: var(--border);
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    /* ── scroll reveal ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── responsive ── */
+    @media (max-width: 640px) {
+      nav { padding: 16px 20px; }
+      .nav-links { display: none; }
+      .hero { padding: 100px 20px 60px; }
+      section { padding: 60px 20px; }
+      .wip-banner { margin: 0 20px; }
+      footer { padding: 40px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- Nav -->
+  <nav>
+    <a href="#" class="nav-logo">
+      <span class="dot"></span>
+      OmniPlayr
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#plugins">Plugins</a></li>
+      <li><a href="#quickstart">Quickstart</a></li>
+      <li><a href="https://github.com/OmniPlayr/OmniPlayr-server" target="_blank" class="nav-cta">GitHub →</a></li>
+    </ul>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-tag">Active Development</div>
+    <h1>Play <span class="accent">every</span><br/>thing from<br/><span class="accent2">one place</span>.</h1>
+    <p class="hero-desc">
+      A self-hosted, extensible media player built around a plugin system.
+      Spotify, YouTube Music, local files — unified under one interface, on your own server.
+    </p>
+    <div class="hero-actions">
+      <a href="#quickstart" class="btn btn-primary">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
+        Quick Start
+      </a>
+      <a href="https://github.com/OmniPlayr/OmniPlayr-server" target="_blank" class="btn btn-ghost">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+  </div>
+
+  <!-- WIP Banner -->
+  <div class="wip-banner">
+    ⚠️&nbsp; <strong>Work in progress</strong> <span>— Expect breaking changes and rough edges. Contributions welcome!</span>
+  </div>
+
+  <!-- Features -->
+  <section id="features">
+    <div class="section-label reveal">// what's being built</div>
+    <h2 class="section-title reveal">Designed for extensibility.</h2>
+    <p class="section-sub reveal">A media player that doesn't lock you in. Install the sources you need, skip the ones you don't.</p>
+
+    <div class="features-grid reveal">
+      <div class="feature-card">
+        <span class="feature-icon">🔌</span>
+        <div class="feature-name">Plugin Architecture</div>
+        <p class="feature-desc">Install only the sources you need. Each plugin is self-contained and independently managed.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🎧</span>
+        <div class="feature-name">Unified Playback</div>
+        <p class="feature-desc">One consistent interface across all plugins — no jumping between apps or tabs.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📦</span>
+        <div class="feature-name">Self-Hosted via Docker</div>
+        <p class="feature-desc">Your data, your server. Deploy with a single Docker Compose command.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🌐</span>
+        <div class="feature-name">Web UI Anywhere</div>
+        <p class="feature-desc">Access the interface from any device on your network via browser — no client installs.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Plugins -->
+  <section id="plugins">
+    <div class="section-label reveal">// plugin roadmap</div>
+    <h2 class="section-title reveal">Coming soon.</h2>
+    <p class="section-sub reveal">The plugin system is the core of OmniPlayr. These sources are on the roadmap.</p>
+
+    <table class="plugin-table reveal">
+      <thead>
+        <tr>
+          <th>Plugin</th>
+          <th>Type</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="plugin-name">🎵 Local MP3 / Files</div></td>
+          <td style="color:var(--muted); font-size:13px;">Local Source</td>
+          <td><span class="status-badge">🔜 Planned</span></td>
+        </tr>
+        <tr>
+          <td><div class="plugin-name">💚 Spotify</div></td>
+          <td style="color:var(--muted); font-size:13px;">Streaming</td>
+          <td><span class="status-badge">🔜 Planned</span></td>
+        </tr>
+        <tr>
+          <td><div class="plugin-name">🎶 YouTube Music</div></td>
+          <td style="color:var(--muted); font-size:13px;">Streaming</td>
+          <td><span class="status-badge">🔜 Planned</span></td>
+        </tr>
+        <tr>
+          <td><div class="plugin-name">🛒 Amazon Music</div></td>
+          <td style="color:var(--muted); font-size:13px;">Streaming</td>
+          <td><span class="status-badge">🔜 Planned</span></td>
+        </tr>
+        <tr>
+          <td><div class="plugin-name">☁️ SoundCloud</div></td>
+          <td style="color:var(--muted); font-size:13px;">Streaming</td>
+          <td><span class="status-badge">🔜 Planned</span></td>
+        </tr>
+        <tr>
+          <td><div class="plugin-name">➕ More...</div></td>
+          <td style="color:var(--muted); font-size:13px;">—</td>
+          <td><span class="status-badge">🔜 Planned</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Quickstart -->
+  <section id="quickstart">
+    <div class="section-label reveal">// get running</div>
+    <h2 class="section-title reveal">Quick Start.</h2>
+    <p class="section-sub reveal">Docker and Python 3.12+ required. Three commands and you're live.</p>
+
+    <div class="quickstart-block reveal">
+      <div class="code-header">
+        <div class="code-dots">
+          <div class="code-dot"></div>
+          <div class="code-dot"></div>
+          <div class="code-dot"></div>
+        </div>
+        <span class="code-filename">terminal</span>
+      </div>
+      <pre><span class="cmd-prefix">$</span> <span class="cmd-text">git clone https://github.com/OmniPlayr/OmniPlayr-server.git</span>
+<span class="cmd-prefix">$</span> <span class="cmd-text">cd OmniPlayr-server</span>
+<span class="cmd-prefix">$</span> <span class="cmd-text">python3 setup.py</span>
+
+<span class="cmd-comment"># Then open your browser at:</span>
+<span class="cmd-prefix">→</span> <span class="cmd-text">http://localhost:3000</span></pre>
+    </div>
+
+    <br/>
+
+    <div class="section-label reveal" style="margin-top:40px;">// manual start</div>
+    <div class="quickstart-block reveal">
+      <div class="code-header">
+        <div class="code-dots">
+          <div class="code-dot"></div>
+          <div class="code-dot"></div>
+          <div class="code-dot"></div>
+        </div>
+        <span class="code-filename">docker compose</span>
+      </div>
+      <pre><span class="cmd-prefix">$</span> <span class="cmd-text">docker compose up -d</span></pre>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Structure -->
+  <section id="structure">
+    <div class="section-label reveal">// project layout</div>
+    <h2 class="section-title reveal">Structure.</h2>
+    <p class="section-sub reveal">Clean separation of concerns from the start.</p>
+
+    <div class="file-tree reveal">
+      <div><span class="tree-dir">OmniPlayr/</span></div>
+      <div>&nbsp;&nbsp;├── <span class="tree-dir">frontend/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-note">Web UI</span></div>
+      <div>&nbsp;&nbsp;├── <span class="tree-dir">backend/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-note">API server</span></div>
+      <div>&nbsp;&nbsp;├── <span class="tree-dir">setup/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-note">Setup wizard (web-based)</span></div>
+      <div>&nbsp;&nbsp;├── <span class="tree-dir">db/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-note">PostgreSQL data (auto-created)</span></div>
+      <div>&nbsp;&nbsp;├── <span class="tree-file">docker-compose.yml</span></div>
+      <div>&nbsp;&nbsp;├── <span class="tree-file">Dockerfile</span></div>
+      <div>&nbsp;&nbsp;└── <span class="tree-file">setup.py</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-note">Entry point</span></div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- CTA -->
+  <section style="text-align:center; padding: 80px 40px;">
+    <div class="section-label reveal" style="justify-content:center; display:flex;">// contribute</div>
+    <h2 class="section-title reveal">Built in the open.</h2>
+    <p class="section-sub reveal" style="margin: 0 auto 40px;">Pull requests are welcome. Have an idea for a plugin or feature? Open an issue and let's discuss it.</p>
+    <div class="hero-actions reveal" style="justify-content:center;">
+      <a href="https://github.com/OmniPlayr/OmniPlayr-server" target="_blank" class="btn btn-primary">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        Star on GitHub
+      </a>
+      <a href="https://github.com/OmniPlayr/OmniPlayr-server/issues" target="_blank" class="btn btn-ghost">Open an Issue</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-logo">OmniPlayr</div>
+    <ul class="footer-links">
+      <li><a href="https://github.com/OmniPlayr/OmniPlayr-server" target="_blank">GitHub</a></li>
+      <li><a href="https://github.com/OmniPlayr/OmniPlayr-server/issues" target="_blank">Issues</a></li>
+      <li><a href="https://github.com/OmniPlayr/OmniPlayr-server/blob/main/LICENSE" target="_blank">MIT License</a></li>
+    </ul>
+    <p class="footer-copy">© 2026 OmniPlayr. Released under the MIT License.</p>
+  </footer>
+
+  <script>
+    // scroll reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          observer.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>
